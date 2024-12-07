@@ -1,0 +1,68 @@
+use std::time::Instant;
+
+fn load() -> (Vec<usize>, Vec<usize>) {
+    let input = include_str!("input.txt");
+
+    input
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .map(|line| {
+            let (left, right) = line.split_once("   ").expect("failed to split line");
+
+            (
+                left.parse::<usize>().expect("failed to parse number"),
+                right.parse::<usize>().expect("failed to parse number"),
+            )
+        })
+        .collect()
+}
+
+fn main() {
+    let load_start = Instant::now();
+
+    let (mut left, mut right) = load();
+
+    let load_end = Instant::now();
+
+    println!("Loading:");
+    println!("   Time: {:?}", load_end - load_start);
+    println!();
+
+    let part_1_start = Instant::now();
+
+    left.sort();
+    right.sort();
+
+    let part_1_solution: usize = left
+        .iter()
+        .zip(right.iter())
+        .map(|(&left, &right)| left.abs_diff(right))
+        .sum();
+
+    let part_1_end = Instant::now();
+
+    println!(" Part 1: {}", part_1_solution);
+    println!("   Time: {:?}", part_1_end - part_1_start);
+    println!();
+
+    let part_2_start = Instant::now();
+
+    let part_2_solution: usize = left
+        .iter()
+        .map(|&left| left * right.iter().filter(|&&right| right == left).count())
+        .sum();
+
+    let part_2_end = Instant::now();
+
+    println!(" Part 2: {}", part_2_solution);
+    println!("   Time: {:?}", part_2_end - part_2_start);
+    println!();
+
+    println!("  Total:");
+    println!(
+        "   Time: {:?}",
+        (load_end - load_start) + (part_1_end - part_1_start) + (part_2_end - part_2_start)
+    );
+    println!();
+}
