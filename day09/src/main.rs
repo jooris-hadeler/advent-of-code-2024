@@ -1,63 +1,35 @@
-use std::{time::Instant, usize};
+use std::{iter::repeat_n, time::Instant, usize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct FileBlock {
-    pub id: usize,
-    pub length: usize,
+enum Cell {
+    File(usize),
+    Empty,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct EmptyBlock {
-    pub length: usize,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-enum Block {
-    File(FileBlock),
-    Empty(EmptyBlock),
-}
-
-impl Block {
-    pub const fn new_file(id: usize, length: usize) -> Self {
-        Self::File(FileBlock { id, length })
-    }
-
-    pub const fn new_empty(length: usize) -> Self {
-        Self::Empty(EmptyBlock { length })
+impl Cell {
+    pub fn is_empty(&self) -> bool {
+        match self {
+            Cell::File(_) => false,
+            Cell::Empty => true,
+        }
     }
 
     pub fn is_file(&self) -> bool {
         match self {
-            Block::File { .. } => true,
-            _ => false,
+            Cell::File(_) => true,
+            Cell::Empty => false,
         }
     }
 
-    pub fn is_empty(&self) -> bool {
+    pub fn as_file(&self) -> usize {
         match self {
-            Block::Empty { .. } => true,
-            _ => false,
-        }
-    }
-
-    #[must_use]
-    pub fn as_file(self) -> FileBlock {
-        match self {
-            Block::File(file) => file,
-            Block::Empty(..) => panic!(),
-        }
-    }
-
-    #[must_use]
-    pub fn as_empty(self) -> EmptyBlock {
-        match self {
-            Block::File(..) => panic!(),
-            Block::Empty(empty) => empty,
+            &Cell::File(id) => id,
+            Cell::Empty => panic!(),
         }
     }
 }
 
-fn load() -> (Vec<Block>, usize) {
+fn load() -> (Vec<Cell>, usize) {
     let input = include_str!("input.txt");
 
     let mut id_counter = 0;
@@ -68,19 +40,31 @@ fn load() -> (Vec<Block>, usize) {
             .chars()
             .map(|ch| ch.to_digit(10).expect("failed to convert char") as usize)
             .enumerate()
-            .map(|(idx, length)| {
+            .flat_map(|(idx, length)| {
                 let id = id_counter;
 
                 if idx % 2 == 0 {
                     id_counter += 1;
-                    Block::new_file(id, length)
+                    repeat_n(Cell::File(id), length)
                 } else {
-                    Block::new_empty(length)
+                    repeat_n(Cell::Empty, length)
                 }
             })
             .collect(),
         id_counter,
     )
+}
+
+fn find_index_and_length_by_id(map: &Vec<Cell>, id: usize) -> Option<(usize, usize)> {
+    let mut iter = map.iter().enumerate().rev();
+
+    let (end_idx, _) = iter.find(|(_, cell)| cell.is_file() && cell.as_file() == id)?;
+
+    let length = iter
+        .take_while(|(_, cell)| cell.is_file() && cell.as_file() == id)
+        .count();
+
+    Some((end_idx - length, length + 1))
 }
 
 fn main() {
@@ -96,61 +80,47 @@ fn main() {
 
     let part_1_start = Instant::now();
 
+    let mut iterations: usize = 0;
+    let mut last_empty_index = 0;
+
     let mut part_1_disk_map = disk_map.clone();
 
-    loop {
-        let first_empty_index = part_1_disk_map.iter().position(Block::is_empty).unwrap();
-        let last_filled_index = part_1_disk_map.len()
-            - 1
-            - part_1_disk_map
-                .iter()
-                .rev()
-                .position(Block::is_file)
-                .unwrap();
+    while let Some(cell) = part_1_disk_map.pop() {
+        iterations += 1;
 
-        if last_filled_index < first_empty_index {
-            break;
+        if cell.is_empty() {
+            continue;
         }
 
-        let empty_block = part_1_disk_map[first_empty_index].as_empty();
-        let file_block = part_1_disk_map[last_filled_index].as_file();
-
-        if empty_block.length < file_block.length {
-            let left_over_space = file_block.length - empty_block.length;
-
-            part_1_disk_map[first_empty_index] = Block::new_file(file_block.id, empty_block.length);
-            part_1_disk_map[last_filled_index] = Block::new_file(file_block.id, left_over_space);
-        } else if empty_block.length == file_block.length {
-            part_1_disk_map.swap(first_empty_index, last_filled_index);
-        } else {
-            let left_over_empty_space = empty_block.length - file_block.length;
-
-            part_1_disk_map.swap(first_empty_index, last_filled_index);
-            part_1_disk_map.insert(
-                first_empty_index + 1,
-                Block::new_empty(left_over_empty_space),
-            );
+        match part_1_disk_map
+            .iter_mut()
+            .skip(last_empty_index)
+            .enumerate()
+            .find(|(_, cell)| cell.is_empty())
+        {
+            Some((idx, empty_cell)) => {
+                *empty_cell = cell;
+                last_empty_index += idx + 1;
+            }
+            None => {
+                part_1_disk_map.push(cell);
+                break;
+            }
         }
     }
 
-    let mut idx = 0;
-
     let part_1_solution: usize = part_1_disk_map
         .iter()
-        .copied()
-        .filter(Block::is_file)
-        .map(Block::as_file)
-        .map(|file| {
-            let current_idx = idx;
-            idx += file.length;
-            (0..file.length).map(move |off| (current_idx + off) * file.id)
+        .enumerate()
+        .map(|(idx, cell)| match cell {
+            &Cell::File(id) => id * idx,
+            Cell::Empty => 0,
         })
-        .flatten()
         .sum();
 
     let part_1_end = Instant::now();
 
-    println!(" Part 1: {}", part_1_solution);
+    println!(" Part 1: {} ({})", part_1_solution, iterations);
     println!("   Time: {:?}", part_1_end - part_1_start);
     println!();
 
@@ -158,63 +128,70 @@ fn main() {
 
     let mut part_2_disk_map = disk_map;
 
+    let mut empty_spaces = {
+        let mut empty_spaces = Vec::new();
+
+        let mut current_start = None;
+        let mut current_length: usize = 0;
+
+        for (i, cell) in part_2_disk_map.iter().enumerate() {
+            match cell {
+                Cell::Empty => {
+                    if current_start.is_none() {
+                        current_start = Some(i); // Start a new block
+                    }
+                    current_length += 1;
+                }
+                _ => {
+                    // Reset block tracking on encountering a non-empty cell
+                    if let Some(current_start) = current_start.take() {
+                        empty_spaces.push((current_start, current_length));
+                    }
+
+                    current_length = 0;
+                }
+            }
+        }
+
+        empty_spaces
+    };
+
     for file_id in (0..max_file_id).rev() {
-        let file_index = part_2_disk_map
-            .iter()
-            .position(|block| block.is_file() && block.as_file().id == file_id)
-            .unwrap();
+        let (file_index, file_length) =
+            find_index_and_length_by_id(&part_2_disk_map, file_id).expect("failed to find file");
 
-        let file_block = part_2_disk_map[file_index].as_file();
-
-        // try finding empty index that has enough space for our file block
-        let Some(first_fitting_empty_index) = part_2_disk_map
+        let Some((idx, (empty_index, empty_length))) = empty_spaces
             .iter()
-            .position(|item| item.is_empty() && item.as_empty().length >= file_block.length)
+            .copied()
+            .enumerate()
+            .find(|&(_, (_, empty_length))| empty_length >= file_length)
         else {
             continue;
         };
 
-        // if the first empty block is after the file block we dont move the block
-        if first_fitting_empty_index > file_index {
+        if empty_index > file_index {
             continue;
         }
 
-        let empty_block = part_2_disk_map[first_fitting_empty_index].as_empty();
+        let left_over = empty_length - file_length;
 
-        // if we have more empty_space than space ensure that we add a padding free block otherwise just swap the blocks
-        if empty_block.length > file_block.length {
-            let left_over_empty_space = empty_block.length - file_block.length;
+        for i in 0..file_length {
+            part_2_disk_map.swap(file_index + i, empty_index + i);
+        }
 
-            part_2_disk_map[file_index] = Block::new_empty(file_block.length);
-            part_2_disk_map[first_fitting_empty_index] =
-                Block::new_file(file_id, file_block.length);
-
-            part_2_disk_map.insert(
-                first_fitting_empty_index + 1,
-                Block::new_empty(left_over_empty_space),
-            );
+        if left_over > 0 {
+            empty_spaces[idx] = (empty_index + file_length, left_over);
         } else {
-            part_2_disk_map.swap(first_fitting_empty_index, file_index);
+            empty_spaces.remove(idx);
         }
     }
 
-    let mut idx = 0;
-
     let part_2_solution: usize = part_2_disk_map
         .iter()
-        .copied()
-        .map(|block| match block {
-            Block::File(file) => {
-                let current_idx = idx;
-                idx += file.length;
-                (0..file.length)
-                    .map(move |off| (current_idx + off) * file.id)
-                    .sum()
-            }
-            Block::Empty(empty) => {
-                idx += empty.length;
-                0
-            }
+        .enumerate()
+        .map(|(idx, cell)| match cell {
+            &Cell::File(id) => id * idx,
+            Cell::Empty => 0,
         })
         .sum();
 
