@@ -20,10 +20,10 @@ fn main() {
 
     let reports = load();
 
-    let load_end = Instant::now();
+    let load_elapsed = load_start.elapsed();
 
     println!("Loading:");
-    println!("   Time: {:?}", load_end - load_start);
+    println!("   Time: {:?}", load_elapsed);
     println!();
 
     let part_1_start = Instant::now();
@@ -41,10 +41,10 @@ fn main() {
         })
         .count();
 
-    let part_1_end = Instant::now();
+    let part_1_elapsed = part_1_start.elapsed();
 
     println!(" Part 1: {}", part_1_solution);
-    println!("   Time: {:?}", part_1_end - part_1_start);
+    println!("   Time: {:?}", part_1_elapsed);
     println!();
 
     let part_2_start = Instant::now();
@@ -75,16 +75,16 @@ fn main() {
         })
         .count();
 
-    let part_2_end = Instant::now();
+    let part_2_elapsed = part_2_start.elapsed();
 
     println!(" Part 2: {}", part_2_solution);
-    println!("   Time: {:?}", part_2_end - part_2_start);
+    println!("   Time: {:?}", part_2_elapsed);
     println!();
 
     println!("  Total:");
     println!(
         "   Time: {:?}",
-        (load_end - load_start) + (part_1_end - part_1_start) + (part_2_end - part_2_start)
+        (load_elapsed) + (part_1_elapsed) + (part_2_elapsed)
     );
     println!();
 }

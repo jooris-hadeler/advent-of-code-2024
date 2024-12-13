@@ -57,10 +57,10 @@ fn main() {
 
     let (rules, updates) = load();
 
-    let load_end = Instant::now();
+    let load_elapsed = load_start.elapsed();
 
     println!("  Loading:");
-    println!("     Time: {:?}", load_end - load_start);
+    println!("     Time: {:?}", load_elapsed);
     println!();
 
     let partition_start = Instant::now();
@@ -69,10 +69,10 @@ fn main() {
         .into_iter()
         .partition(|update| rules.iter().all(|&rule| check_rule(rule, update)));
 
-    let partition_end = Instant::now();
+    let partition_elapsed = partition_start.elapsed();
 
     println!("Partition:");
-    println!("     Time: {:?}", partition_end - partition_start);
+    println!("     Time: {:?}", partition_elapsed);
     println!();
 
     let part_1_start = Instant::now();
@@ -82,10 +82,10 @@ fn main() {
         .map(|update| update[update.len() / 2])
         .sum();
 
-    let part_1_end = Instant::now();
+    let part_1_elapsed = part_1_start.elapsed();
 
     println!("   Part 1: {}", part_1_solution);
-    println!("     Time: {:?}", part_1_end - part_1_start);
+    println!("     Time: {:?}", part_1_elapsed);
     println!();
 
     let part_2_start = Instant::now();
@@ -111,15 +111,15 @@ fn main() {
         .map(|update| update[update.len() / 2])
         .sum();
 
-    let part_2_end = Instant::now();
+    let part_2_elapsed = part_2_start.elapsed();
 
     println!("   Part 2: {}", part_2_solution);
-    println!("     Time: {:?}", part_2_end - part_2_start);
+    println!("     Time: {:?}", part_2_elapsed);
     println!();
 
     println!("    Total:");
     println!(
         "     Time: {:?}",
-        (load_end - load_start) + (part_1_end - part_1_start) + (part_2_end - part_2_start)
+        (load_elapsed) + (part_1_elapsed) + (part_2_elapsed)
     );
 }
